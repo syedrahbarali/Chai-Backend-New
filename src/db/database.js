@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-const { DB_NAME } = require("./constants");
+const { DB_NAME } = require("../constants");
 
 exports.dbConnect = async () => {
   try {
