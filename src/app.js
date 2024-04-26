@@ -16,5 +16,7 @@ app.use(
 );
 
 // Routes
+const userRoutes = require("./routes/user.routes");
+app.use("/api/v1/user", userRoutes);
 
 module.exports = app;
