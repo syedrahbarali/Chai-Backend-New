@@ -11,13 +11,23 @@ exports.uploadOnCloudinary = async (localFilePath) => {
       api_secret: process.env.CLOUDINARY_API_SECRET,
     });
 
-    const response = await cloudinary.uploader.upload(localFilePath, {
-      resource_type: "auto",
-    });
+    const response = await cloudinary.uploader.upload(
+      localFilePath,
+      (error, result) => {
+        console.log(result);
+      }
+    );
 
-    console.log("File uploaded on cloudinary", response.url);
+    console.log("Unlinking1");
+    fs.unlink(localFilePath, (err) => {
+      if (err) {
+        console.log("Not Unlinking ", err);
+      }
+    });
     return response;
   } catch (error) {
+    console.log(error);
+    console.log("\nUnlinking2");
     fs.unlink(localFilePath);
     return null;
   }

@@ -1,17 +1,16 @@
 const User = require("../models/user.model");
 const { ApiError } = require("../utils/ApiError");
 const { asyncHandler } = require("../utils/asyncHandler");
-const upload = require("../middlewares/upload");
 const { uploadOnCloudinary } = require("../utils/cloudinary");
-const { ApiRespose } = require("../utils/ApiResponse");
+const { ApiResponse } = require("../utils/ApiResponse");
 
 exports.registerUser = asyncHandler(async (req, res) => {
   // get details from requrest body
   const { username, email, fullName, password } = req.body;
 
-  //  check if all fields are not empty
+  //  check if all fields are not empty - (Validation)
   if (
-    [username, email, fullName, password].some((field) => field.trim() === "")
+    [username, email, fullName, password].some((field) => field?.trim() === "")
   ) {
     throw new ApiError(400, "All fields are required");
   }
@@ -43,8 +42,8 @@ exports.registerUser = asyncHandler(async (req, res) => {
   }
 
   //   create user in database
-  const user = await User.create({
-    username: username.toLowerCase(),
+  const newUser = new User({
+    username,
     email: email.toLowerCase(),
     fullName,
     password,
@@ -52,8 +51,10 @@ exports.registerUser = asyncHandler(async (req, res) => {
     coverImage: coverImage?.url || "",
   });
 
+  const user = await newUser.save();
+
   //   find user using _id
-  const createdUser = await User.findOne(user._id).select(
+  const createdUser = await User.findById(user._id).select(
     "-password -refreshToken"
   );
 
@@ -64,7 +65,17 @@ exports.registerUser = asyncHandler(async (req, res) => {
 
   res
     .status(201)
-    .json(new ApiRespose(201, createdUser, "User created successfully"));
+    .json(new ApiResponse(201, createdUser, "User created successfully"));
+});
+
+exports.login = asyncHandler((req, res) => {
+  // get details from requrest body
+  // check if all fields are not empty
+  // find user using email
+  // check if password is correct
+  // generate access token and refresh token
+  // return response with access token and refresh token
+  const { username, email, password } = req.body;
 });
 
 // get details from requrest body
