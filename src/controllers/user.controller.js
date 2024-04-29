@@ -4,6 +4,27 @@ const { asyncHandler } = require("../utils/asyncHandler");
 const { uploadOnCloudinary } = require("../utils/cloudinary");
 const { ApiResponse } = require("../utils/ApiResponse");
 
+// generate access and refresh token
+const generateAccessAndRefreshToken = async (user) => {
+  try {
+    const accessToken = user.generateAccessToken();
+    const refreshToken = user.generateRefreshToken();
+
+    user.refreshToken = refreshToken;
+    const loggedInUser = await user.save({ validateBeforeSave: false });
+    loggedInUser.password = undefined;
+    loggedInUser.refreshToken = undefined;
+
+    return { accessToken, refreshToken, loggedInUser };
+  } catch (error) {
+    console.log(error);
+    throw new ApiError(
+      500,
+      "Something went wrong while generating access and refresh token"
+    );
+  }
+};
+
 exports.registerUser = asyncHandler(async (req, res) => {
   // get details from requrest body
   const { username, email, fullName, password } = req.body;
@@ -68,7 +89,7 @@ exports.registerUser = asyncHandler(async (req, res) => {
     .json(new ApiResponse(201, createdUser, "User created successfully"));
 });
 
-exports.login = asyncHandler((req, res) => {
+exports.login = asyncHandler(async (req, res) => {
   // get details from requrest body
   // check if all fields are not empty
   // find user using email
@@ -76,14 +97,96 @@ exports.login = asyncHandler((req, res) => {
   // generate access token and refresh token
   // return response with access token and refresh token
   const { username, email, password } = req.body;
+
+  //   check if all fields are not empty - (Validation)
+  if ((!username || !email) && !password) {
+    throw new ApiError(400, "All fields are required");
+  }
+
+  //   find user using email or username
+  const user = await User.findOne({
+    $or: [{ username }, { email }],
+  });
+
+  // check if user not exist
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+
+  // check if password is correct
+  if (!(await user.isPasswordCorrect(password))) {
+    throw new ApiError(401, "Incorrect password");
+  }
+
+  const { accessToken, refreshToken, loggedInUser } =
+    await generateAccessAndRefreshToken(user);
+
+  loggedInUser.password = undefined;
+  loggedInUser.refreshToken = undefined;
+
+  const options = {
+    httpOnly: true,
+    secure: true,
+  };
+
+  // return response with access token and refresh token in cookie
+  res
+    .status(200)
+    .cookie("accessToken", accessToken, options)
+    .cookie("refreshToken", refreshToken, options)
+    .json(
+      new ApiResponse(
+        200,
+        { user: loggedInUser },
+        "User logged in successfully"
+      )
+    );
 });
 
-// get details from requrest body
-// check if all fields are not empty
-// check for avatar is not empty
-// check if username and email already exist
-// upload avatar and coverImage to cloudinary
-// create user in database
-// find user using _id
-// remove password and refresh token from the response
-// return response
+// exports.logout = asyncHandler(async (req, res) => {
+//   const user = await User.findByIdAndUpdate(
+//     req.user._id,
+//     {
+//       $set: { refreshToken: undefined },
+//     },
+//     { new: true }
+//   );
+
+//   if (!user) {
+//     throw new ApiError(404, "User not found");
+//   }
+
+//   const options = {
+//     httpOnly: true,
+//     secure: true,
+//   };
+
+//   res.clearCookie("accessToken", options);
+//   res.clearCookie("refreshToken", options);
+
+//   res
+//     .status(200)
+//     .json(new ApiResponse(200, user, "User logged out successfully"));
+// });
+
+exports.logout = asyncHandler(async (req, res) => {
+  const user = await User.findByIdAndUpdate(
+    req.user._id,
+    {
+      $set: { refreshToken: "" },
+    },
+    { new: true }
+  );
+
+  const options = {
+    httpOnly: true,
+    secure: true,
+  };
+
+  res.clearCookie("accessToken", options);
+  res.clearCookie("refreshToken", options);
+
+  res
+    .status(200)
+    .json(new ApiResponse(200, user, "User logged out successfully"));
+});
