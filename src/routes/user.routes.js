@@ -3,6 +3,8 @@ const {
   registerUser,
   login,
   logout,
+  refreshAccessToken,
+  updatePassword,
 } = require("../controllers/user.controller");
 const router = express.Router();
 const { upload } = require("../middlewares/upload");
@@ -21,5 +23,7 @@ router.post("/login", login);
 
 // secured routes
 router.post("/logout", verifyJWT, logout);
+router.post("/refresh-token", refreshAccessToken);
+router.post("/update-password", verifyJWT, updatePassword);
 
 module.exports = router;
