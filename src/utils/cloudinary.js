@@ -26,7 +26,6 @@ exports.uploadOnCloudinary = async (localFilePath) => {
     });
     return response;
   } catch (error) {
-    console.log(error);
     console.log("\nUnlinking2");
     fs.unlink(localFilePath);
     return null;

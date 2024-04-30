@@ -252,3 +252,29 @@ exports.updatePassword = asyncHandler(async (req, res) => {
     .status(200)
     .json(new ApiResponse(200, {}, "Password updated successfully"));
 });
+
+exports.updateAvatar = asyncHandler(async (req, res) => {
+  const avatarLocalPath = req.files?.avatar[0].path;
+  const avatar = await uploadOnCloudinary(avatarLocalPath);
+
+  if (!avatar) {
+    throw new ApiError(500, "Something went wrong while uploading avatar");
+  }
+
+  const decodedToken = jwt.verify(
+    req.cookies.accessToken,
+    process.env.ACCESS_TOKEN_SECRET
+  );
+
+  if (!decodedToken) {
+    throw new ApiError(401, "Invalid access token");
+  }
+
+  const user = await User.findByIdAndUpdate(decodedToken._id, {
+    $set: { avatar: avatar.url },
+  }).select("-password -refreshToken");
+
+  res
+    .status(200)
+    .json(new ApiResponse(200, user, "Avatar updated successfully"));
+});
